@@ -1,0 +1,81 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<LangVersion>preview</LangVersion>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<Compile Remove="libs\**" />
+		<EmbeddedResource Remove="libs\**" />
+		<None Remove="libs\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="BepInEx.Analyzers" Version="1.0.*">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="BepInEx.Core" Version="5.4.19" />
+		<PackageReference Include="BepInEx.BaseLib" Version="5.4.19" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Reference Include="com.unity.multiplayer-hlapi.Runtime">
+	    <HintPath>libs\com.unity.multiplayer-hlapi.Runtime-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="HGCSharpUtils">
+	    <HintPath>libs\HGCSharpUtils-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="LegacyResourcesAPI">
+	    <HintPath>libs\LegacyResourcesAPI-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="MMHOOK_RoR2">
+	    <HintPath>libs\MMHOOK_RoR2-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="R2API.Core">
+	    <HintPath>libs\R2API.Core-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="R2API.Director">
+	    <HintPath>libs\R2API.Director-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="R2API.Language">
+	    <HintPath>libs\R2API.Language-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="R2API.Networking">
+	    <HintPath>libs\R2API.Networking-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="R2API.RecalculateStats">
+	    <HintPath>libs\R2API.RecalculateStats-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="RoR2">
+	    <HintPath>libs\RoR2-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="RoR2BepInExPack">
+	    <HintPath>libs\RoR2BepInExPack-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="Unity.Addressables">
+	    <HintPath>..\..\RiskyMonkeyBase\RiskyMonkeyBase\libs\Unity.Addressables-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="Unity.ResourceManager">
+	    <HintPath>..\..\RiskyMonkeyBase\RiskyMonkeyBase\libs\Unity.ResourceManager-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="UnityEngine">
+	    <HintPath>libs\UnityEngine-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="UnityEngine.CoreModule">
+	    <HintPath>libs\UnityEngine.CoreModule-nstrip.dll</HintPath>
+	  </Reference>
+	  <Reference Include="UnityEngine.ParticleSystemModule">
+	    <HintPath>libs\UnityEngine.ParticleSystemModule-nstrip.dll</HintPath>
+	  </Reference>
+	</ItemGroup>
+	
+	  <ItemGroup>
+		<None Update="manifest.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	  </ItemGroup>
+
+</Project>
