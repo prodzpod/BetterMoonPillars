@@ -7,3 +7,7 @@
 * Minimum radius for moon pillars. (for Focused Convergence)
 
 By default, moon elevators will be unlocked from the start. Completing a pillar will reward you with a choice between 2 greens and a lunar.
+
+## Changelog
+- 1.0.1: Removed R2API dependency (it wasnt using it)
+- 1.0.0: Initial Commit

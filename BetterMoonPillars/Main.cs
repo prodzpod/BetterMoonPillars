@@ -1,11 +1,9 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
-using EntityStates;
 using HarmonyLib;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
-using R2API.Utils;
 using RoR2;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,15 +13,13 @@ using UnityEngine.Networking;
 
 namespace BetterMoonPillars
 {
-    [BepInDependency(R2API.R2API.PluginGUID)]
     [BepInPlugin(PluginGUID, PluginName, PluginVersion)]
-    [NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod)]
     public class Main : BaseUnityPlugin
     {
         public const string PluginGUID = PluginAuthor + "." + PluginName;
         public const string PluginAuthor = "prodzpod";
         public const string PluginName = "BetterMoonPillars";
-        public const string PluginVersion = "1.0.0";
+        public const string PluginVersion = "1.0.1";
         public static ManualLogSource Log;
         internal static PluginInfo pluginInfo;
         public static ConfigFile Config;
