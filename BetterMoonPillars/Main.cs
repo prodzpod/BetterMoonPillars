@@ -5,6 +5,7 @@ using HarmonyLib;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using RoR2;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -19,7 +20,7 @@ namespace BetterMoonPillars
         public const string PluginGUID = PluginAuthor + "." + PluginName;
         public const string PluginAuthor = "prodzpod";
         public const string PluginName = "BetterMoonPillars";
-        public const string PluginVersion = "1.0.1";
+        public const string PluginVersion = "1.2.0";
         public static ManualLogSource Log;
         internal static PluginInfo pluginInfo;
         public static ConfigFile Config;
@@ -31,11 +32,18 @@ namespace BetterMoonPillars
         public static ConfigEntry<float> RewardTime;
         public static ConfigEntry<float> DesignPillarMinRadius;
         public static ConfigEntry<float> PillarMinRadius;
+        public static ConfigEntry<int> PillarExtraLunar;
+        public static ConfigEntry<float> PillarHealth;
+        public static ConfigEntry<float> PillarDamage;
+        public static ConfigEntry<float> PillarSpeed;
+        public static ConfigEntry<float> PillarArmor;
+        private ConfigEntry<float> PillarAttackSpeed;
         public static Dictionary<string, WeightedSelection<PickupIndex>> ItemSelections = new();
         public static WeightedSelection<PickupIndex> EquipmentSelections = new();
         public static WeightedSelection<PickupIndex> LunarEquipmentSelections = new();
         public static GameObject prefab;
 
+        public static int pillarCompleted = 0;
         public void Awake()
         {
             pluginInfo = Info;
@@ -49,18 +57,47 @@ namespace BetterMoonPillars
             RewardTime = Config.Bind("General", "Reward Time", 0f, "Amount of time rewinded per pillar in seconds.");
             DesignPillarMinRadius = Config.Bind("General", "Pillar of Design Minimum Radius", 10f, "Minimum Pillar of Design radius for Focused Convergence.");
             PillarMinRadius = Config.Bind("General", "Other Pillars Minimum Radius", 7f, "Minimum pillar radius for Focused Convergence.");
+            PillarExtraLunar = Config.Bind("General", "Extra Lunar Coin per Pillar", 0, "Extra lunar coin reward for each pillar.");
+            PillarHealth = Config.Bind("General", "Mithrix Health Multiplier per Pillar", 0f, "Mithrix gets stronger/weaker each pillar. Multiplicative.");
+            PillarDamage = Config.Bind("General", "Mithrix Damage Multiplier per Pillar", 0f, "Mithrix gets stronger/weaker each pillar. Multiplicative.");
+            PillarSpeed = Config.Bind("General", "Mithrix Speed Bonus per Pillar", 0f, "Mithrix gets stronger/weaker each pillar. Multiplicative.");
+            PillarArmor = Config.Bind("General", "Mithrix Armor Bonus per Pillar", 0f, "Mithrix gets stronger/weaker each pillar. Multiplicative.");
+            PillarAttackSpeed = Config.Bind("General", "Mithrix Damage Multiplier per Pillar", 0f, "Mithrix gets stronger/weaker each pillar. Multiplicative.");
             RoR2Application.onLoad += PostStart;
         }
 
         public void PostStart()
         {
+            Run.onRunStartGlobal += _ => pillarCompleted = 0;
+            CharacterBody.onBodyStartGlobal += body =>
+            {
+                if (body.name.StartsWith("Brother"))
+                {
+                    body.baseMaxHealth *= 1 + (PillarHealth.Value * pillarCompleted);
+                    body.levelMaxHealth *= 1 + (PillarHealth.Value * pillarCompleted);
+                    body.baseDamage *= 1 + (PillarDamage.Value * pillarCompleted);
+                    body.levelDamage *= 1 + (PillarDamage.Value * pillarCompleted);
+                    body.baseMoveSpeed *= 1 + (PillarSpeed.Value * pillarCompleted);
+                    body.levelMoveSpeed *= 1 + (PillarSpeed.Value * pillarCompleted);
+                    body.baseArmor *= 1 + (PillarArmor.Value * pillarCompleted);
+                    body.levelArmor *= 1 + (PillarArmor.Value * pillarCompleted);
+                    body.baseAttackSpeed *= 1 + (PillarAttackSpeed.Value * pillarCompleted);
+                    body.levelAttackSpeed *= 1 + (PillarAttackSpeed.Value * pillarCompleted);
+                }
+            };
+            IL.RoR2.Run.BeginGameOver += (il) =>
+            {
+                ILCursor c = new(il);
+                c.GotoNext(x => x.MatchCallOrCallvirt<NetworkUser>(nameof(NetworkUser.AwardLunarCoins)));
+                c.EmitDelegate<Func<uint, uint>>(orig => (uint)(orig + (pillarCompleted * PillarExtraLunar.Value)));
+            };
             Log.LogInfo("Available Tiers: " + ItemTierCatalog.allItemTierDefs.Join(x => x.name) + ", EquipmentTierDef, LunarEquipmentTierDef");
             if (RewardList.Value != "") PatchReward();
             if (RewardTime.Value != 0) On.EntityStates.Missions.Moon.MoonBatteryComplete.OnEnter += (orig, self) => 
             { 
                 orig(self);
                 if (RewardPastRequired.Value && MoonBatteryMissionController.instance != null && MoonBatteryMissionController.instance.numChargedBatteries <= MoonBatteryMissionController.instance.numRequiredBatteries) return;
-                Run.instance.SetRunStopwatch(Mathf.Max(0, Run.instance.GetRunStopwatch() - RewardTime.Value)); 
+                Run.instance.SetRunStopwatch(Mathf.Max(0, Run.instance.GetRunStopwatch() - RewardTime.Value));
             };
             if (RequiredPillars.Value <= 0) PatchOptional();
             else
@@ -108,6 +145,7 @@ namespace BetterMoonPillars
             {
                 orig(self);
                 if (RewardPastRequired.Value && MoonBatteryMissionController.instance != null && MoonBatteryMissionController.instance.numChargedBatteries <= MoonBatteryMissionController.instance.numRequiredBatteries) return;
+                pillarCompleted++;
                 List<List<PickupIndex>> options = new();
                 int num = RewardNumber.Value * (RewardPlayerScale.Value ? Run.instance.participatingPlayerCount : 1);
                 for (int i = 0; i < num; i++)
@@ -138,9 +176,25 @@ namespace BetterMoonPillars
 
         public static PickupIndex GetPickupFromTier(string tier)
         {
-            if (tier == "EquipmentTierDef") return PickupDropTable.GenerateUniqueDropsFromWeightedSelection(1, Run.instance.treasureRng, EquipmentSelections)[0];
-            if (tier == "LunarEquipmentTierDef") return PickupDropTable.GenerateUniqueDropsFromWeightedSelection(1, Run.instance.treasureRng, LunarEquipmentSelections)[0];
-            return PickupDropTable.GenerateUniqueDropsFromWeightedSelection(1, Run.instance.treasureRng, ItemSelections[tier] ?? ItemSelections.Values.First())[0];
+            PickupIndex result = PickupIndex.none;
+            if (tier == "EquipmentTierDef") result = PickupDropTable.GenerateUniqueDropsFromWeightedSelection(1, Run.instance.treasureRng, EquipmentSelections)[0];
+            else if (tier == "LunarEquipmentTierDef") result = PickupDropTable.GenerateUniqueDropsFromWeightedSelection(1, Run.instance.treasureRng, LunarEquipmentSelections)[0];
+            else if (ItemSelections.ContainsKey(tier)) result = PickupDropTable.GenerateUniqueDropsFromWeightedSelection(1, Run.instance.treasureRng, ItemSelections[tier])[0];
+            else
+            {
+                foreach (ItemDef itemDef in ItemCatalog.allItemDefs) if (itemDef.name == tier && itemDef.itemIndex != ItemIndex.None)
+                {
+                    PickupIndex pickupIndex = PickupCatalog.FindPickupIndex(itemDef.itemIndex);
+                    if (pickupIndex != PickupIndex.none) return pickupIndex;
+                }
+                foreach (EquipmentDef equipmentDef in EquipmentCatalog.equipmentDefs) if (equipmentDef.name == tier && equipmentDef.equipmentIndex != EquipmentIndex.None)
+                {
+                    PickupIndex pickupIndex2 = PickupCatalog.FindPickupIndex(equipmentDef.equipmentIndex);
+                    if (pickupIndex2 != PickupIndex.none) return pickupIndex2;
+                }
+                result = PickupDropTable.GenerateUniqueDropsFromWeightedSelection(1, Run.instance.treasureRng, ItemSelections.Values.First())[0];
+            }
+            return result;
         }
 
         public static void PatchOptional()
