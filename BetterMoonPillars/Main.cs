@@ -20,7 +20,7 @@ namespace BetterMoonPillars
         public const string PluginGUID = PluginAuthor + "." + PluginName;
         public const string PluginAuthor = "prodzpod";
         public const string PluginName = "BetterMoonPillars";
-        public const string PluginVersion = "1.2.0";
+        public const string PluginVersion = "1.2.1";
         public static ManualLogSource Log;
         internal static PluginInfo pluginInfo;
         public static ConfigFile Config;
@@ -30,6 +30,7 @@ namespace BetterMoonPillars
         public static ConfigEntry<int> RequiredPillars;
         public static ConfigEntry<bool> RewardPastRequired;
         public static ConfigEntry<float> RewardTime;
+        public static ConfigEntry<bool> RewardIsPotential;
         public static ConfigEntry<float> DesignPillarMinRadius;
         public static ConfigEntry<float> PillarMinRadius;
         public static ConfigEntry<int> PillarExtraLunar;
@@ -37,7 +38,7 @@ namespace BetterMoonPillars
         public static ConfigEntry<float> PillarDamage;
         public static ConfigEntry<float> PillarSpeed;
         public static ConfigEntry<float> PillarArmor;
-        private ConfigEntry<float> PillarAttackSpeed;
+        public static ConfigEntry<float> PillarAttackSpeed;
         public static Dictionary<string, WeightedSelection<PickupIndex>> ItemSelections = new();
         public static WeightedSelection<PickupIndex> EquipmentSelections = new();
         public static WeightedSelection<PickupIndex> LunarEquipmentSelections = new();
@@ -55,6 +56,7 @@ namespace BetterMoonPillars
             RequiredPillars = Config.Bind("General", "Required Pillars", 0, "How many pillars are required.");            
             RewardPastRequired = Config.Bind("General", "Only Reward Past Required", false, "Whether all or only the extra pillars should reward players.");
             RewardTime = Config.Bind("General", "Reward Time", 0f, "Amount of time rewinded per pillar in seconds.");
+            RewardIsPotential = Config.Bind("General", "Reward is Potential", true, "Whether to drop reward pickup as a potential or an item randomly chosen from the union of above pool.");
             DesignPillarMinRadius = Config.Bind("General", "Pillar of Design Minimum Radius", 10f, "Minimum Pillar of Design radius for Focused Convergence.");
             PillarMinRadius = Config.Bind("General", "Other Pillars Minimum Radius", 7f, "Minimum pillar radius for Focused Convergence.");
             PillarExtraLunar = Config.Bind("General", "Extra Lunar Coin per Pillar", 0, "Extra lunar coin reward for each pillar.");
@@ -69,20 +71,25 @@ namespace BetterMoonPillars
         public void PostStart()
         {
             Run.onRunStartGlobal += _ => pillarCompleted = 0;
-            CharacterBody.onBodyStartGlobal += body =>
+            On.RoR2.ScriptedCombatEncounter.BeginEncounter += (orig, self) =>
             {
-                if (body.name.StartsWith("Brother"))
+                orig(self);
+                if (SceneCatalog.mostRecentSceneDef.cachedName.StartsWith("moon"))
                 {
-                    body.baseMaxHealth *= 1 + (PillarHealth.Value * pillarCompleted);
-                    body.levelMaxHealth *= 1 + (PillarHealth.Value * pillarCompleted);
-                    body.baseDamage *= 1 + (PillarDamage.Value * pillarCompleted);
-                    body.levelDamage *= 1 + (PillarDamage.Value * pillarCompleted);
-                    body.baseMoveSpeed *= 1 + (PillarSpeed.Value * pillarCompleted);
-                    body.levelMoveSpeed *= 1 + (PillarSpeed.Value * pillarCompleted);
-                    body.baseArmor *= 1 + (PillarArmor.Value * pillarCompleted);
-                    body.levelArmor *= 1 + (PillarArmor.Value * pillarCompleted);
-                    body.baseAttackSpeed *= 1 + (PillarAttackSpeed.Value * pillarCompleted);
-                    body.levelAttackSpeed *= 1 + (PillarAttackSpeed.Value * pillarCompleted);
+                    foreach (var member in self.combatSquad.membersList)
+                    {
+                        CharacterBody body = member.GetBody();
+                        body.baseMaxHealth *= 1 + (PillarHealth.Value * pillarCompleted);
+                        body.levelMaxHealth *= 1 + (PillarHealth.Value * pillarCompleted);
+                        body.baseDamage *= 1 + (PillarDamage.Value * pillarCompleted);
+                        body.levelDamage *= 1 + (PillarDamage.Value * pillarCompleted);
+                        body.baseMoveSpeed *= 1 + (PillarSpeed.Value * pillarCompleted);
+                        body.levelMoveSpeed *= 1 + (PillarSpeed.Value * pillarCompleted);
+                        body.baseArmor *= 1 + (PillarArmor.Value * pillarCompleted);
+                        body.levelArmor *= 1 + (PillarArmor.Value * pillarCompleted);
+                        body.baseAttackSpeed *= 1 + (PillarAttackSpeed.Value * pillarCompleted);
+                        body.levelAttackSpeed *= 1 + (PillarAttackSpeed.Value * pillarCompleted);
+                    }
                 }
             };
             IL.RoR2.Run.BeginGameOver += (il) =>
@@ -160,7 +167,7 @@ namespace BetterMoonPillars
                 for (int i = 0; i < num; i++)
                 {
                     List<PickupIndex> option = options[i];
-                    if (option.Count > 1) PickupDropletController.CreatePickupDroplet(new GenericPickupController.CreatePickupInfo()
+                    if (RewardIsPotential.Value && option.Count > 1) PickupDropletController.CreatePickupDroplet(new GenericPickupController.CreatePickupInfo()
                     {
                         pickerOptions = PickupPickerController.GenerateOptionsFromArray(option.ToArray()),
                         prefabOverride = prefab,
@@ -168,7 +175,7 @@ namespace BetterMoonPillars
                         rotation = Quaternion.identity,
                         pickupIndex = option[0]
                     }, position, velocity);
-                    else PickupDropletController.CreatePickupDroplet(option[0], position, velocity);
+                    else PickupDropletController.CreatePickupDroplet(Run.instance.treasureRng.NextElementUniform(option), position, velocity);
                     velocity = quaternion * velocity;
                 }
             };

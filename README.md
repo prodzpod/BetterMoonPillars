@@ -11,6 +11,7 @@
 By default, moon elevators will be unlocked from the start. Completing a pillar will reward you with a choice between 2 greens and a lunar.
 
 ## Changelog
+- 1.2.1: Ability to drop pickup as random item instead of potential, fixed mithrix stats
 - 1.2.0: Extra Lunar Coins Configs, Mithrix Stats Configs
 - 1.1.0: Added support for individual items/equipments instead of just Tiers (WRB setting would be `LunarTierDef, Tier2Def, Pearl`)
 - 1.0.1: Removed R2API dependency (it wasnt using it)
